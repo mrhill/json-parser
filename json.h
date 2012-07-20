@@ -31,6 +31,8 @@
 #ifndef _JSON_H
 #define _JSON_H
 
+#include <stdio.h>
+
 #ifndef json_char
    #define json_char char
 #endif
@@ -251,6 +253,7 @@ json_value * json_parse_ex (json_settings * settings,
 
 void json_value_free (json_value *);
 
+void json_value_dump(FILE * fp, json_value const * v);
 
 /* Not usually necessary, unless you used a custom mem_alloc and now want to
  * use a custom mem_free.

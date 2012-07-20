@@ -193,7 +193,7 @@ const static long
    flag_next             = 1 << 0,
    flag_reproc           = 1 << 1,
    flag_need_comma       = 1 << 2,
-   flag_seek_value       = 1 << 3, 
+   flag_seek_value       = 1 << 3,
    flag_escaped          = 1 << 4,
    flag_string           = 1 << 5,
    flag_need_colon       = 1 << 6,
@@ -251,7 +251,7 @@ json_value * json_parse_ex (json_settings * settings,
       for (i = json ;; ++ i)
       {
          json_char b = (i == end ? 0 : *i);
-         
+
          if (flags & flag_done)
          {
             if (!b)
@@ -366,7 +366,7 @@ json_value * json_parse_ex (json_settings * settings,
                      if (state.first_pass)
                         (*(json_char **) &top->u.object.values) += string_length + 1;
                      else
-                     {  
+                     {
                         top->u.object.values [top->u.object.length].name
                            = (json_char *) top->_reserved.object_mem;
 
@@ -551,7 +551,7 @@ json_value * json_parse_ex (json_settings * settings,
             switch (top->type)
             {
             case json_object:
-               
+
                switch (b)
                {
                   whitespace:
@@ -571,7 +571,7 @@ json_value * json_parse_ex (json_settings * settings,
                      string_length = 0;
 
                      break;
-                  
+
                   case '}':
 
                      flags = (flags & ~ flag_need_comma) | flag_next;
@@ -727,7 +727,7 @@ json_value * json_parse_ex (json_settings * settings,
 
             if (top->parent->type == json_array)
                flags |= flag_seek_value;
-               
+
             if (!state.first_pass)
             {
                json_value * parent = top->parent;
@@ -869,5 +869,62 @@ void json_value_free (json_value * value)
    json_settings settings = { 0 };
    settings.mem_free = default_free;
    json_value_free_ex (&settings, value);
+}
+
+void json_value_dump(FILE * fp, json_value const * v) {
+   void (* const rec)(FILE * fp, json_value const * v) = json_value_dump;
+
+   assert(fp);
+   assert(v);
+   {
+      unsigned int i;
+      switch (v->type) {
+      case json_none:   // ??
+         fprintf(fp, "none");
+         break;
+      case json_object:
+         fprintf(fp, "{");
+         if (v->u.object.length >= 1) {
+            fprintf(fp, "\"%s\":", v->u.object.values[0].name);
+            rec(fp, v->u.object.values[0].value);
+         }
+         for (i=1; i<v->u.object.length; ++i) {
+            fprintf(fp, ",");
+            fprintf(fp, "\"%s\":", v->u.object.values[i].name);
+            rec(fp, v->u.object.values[i].value);
+         }
+         fprintf(fp, "}");
+         break;
+      case json_array:
+         fprintf(fp, "[");
+         if (v->u.array.length >= 1) {
+            rec(fp, v->u.array.values[0]);
+         }
+         for (i=1; i<v->u.array.length; ++i) {
+            fprintf(fp, ",");
+            rec(fp, v->u.array.values[i]);
+         }
+         fprintf(fp, "]");
+         break;
+      case json_integer:
+         fprintf(fp, "%ld", v->u.integer);
+         break;
+      case json_double:
+         fprintf(fp, "%lf", v->u.dbl);
+         break;
+      case json_string:
+         fprintf(fp, "\"%s\"", v->u.string.ptr);
+         break;
+      case json_boolean:
+         fprintf(fp, v->u.boolean ? "true" : "false");
+         break;
+      case json_null:
+         fprintf(fp, "null");
+         break;
+      default:
+         fprintf(stderr, "unknown format json value is passed\n");
+         break;
+      }
+   }
 }
 
