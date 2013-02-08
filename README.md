@@ -14,8 +14,16 @@ is _not_ required to build json-parser, and the source files (`json.c` and `json
 in any build system you already have in place.
 
 
+<<<<<<< HEAD
 API
 ---
+=======
+    json_value * json_value_dup
+        (json_value const *);
+
+	void json_value_dump
+		(FILE * fp, json_value const * v);
+>>>>>>> d30283b... add copy constructor of json_value type
 
     json_value * json_parse (const json_char * json,
                              size_t length);

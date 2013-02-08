@@ -37,6 +37,10 @@
    #define json_char char
 #endif
 
+#if !defined __cplusplus
+typedef enum { false=0, true } bool;
+#endif
+
 #ifndef json_int_t
    #ifndef _MSC_VER
       #include <inttypes.h>
@@ -178,7 +182,7 @@ typedef struct _json_value
          }
 
          inline const struct _json_value &operator [] (const char * index) const
-         { 
+         {
             if (type != json_object)
                return json_value_none;
 
@@ -190,7 +194,7 @@ typedef struct _json_value
          }
 
          inline operator const char * () const
-         {  
+         {
             switch (type)
             {
                case json_string:
@@ -202,7 +206,7 @@ typedef struct _json_value
          }
 
          inline operator json_int_t () const
-         {  
+         {
             switch (type)
             {
                case json_integer:
@@ -217,7 +221,7 @@ typedef struct _json_value
          }
 
          inline operator bool () const
-         {  
+         {
             if (type != json_boolean)
                return false;
 
@@ -225,7 +229,7 @@ typedef struct _json_value
          }
 
          inline operator double () const
-         {  
+         {
             switch (type)
             {
                case json_integer:
@@ -251,7 +255,10 @@ json_value * json_parse_ex (json_settings * settings,
                             size_t length,
                             char * error);
 
+json_value * json_value_dup(json_value const * json);
 void json_value_free (json_value *);
+
+char const * json_type_to_string(json_type ty) ;
 
 void json_value_dump(FILE * fp, json_value const * v);
 
@@ -261,6 +268,13 @@ void json_value_dump(FILE * fp, json_value const * v);
 void json_value_free_ex (json_settings * settings,
                          json_value *);
 
+// compare json values
+bool json_value_equal(json_value const * lhs, json_value const * rhs);
+// compare type(schemas) of json values
+bool json_type_equal (json_value const * lhs, json_value const * rhs);
+json_value const * find_json_object(json_value const * v, char const * field);
+// is_array && all (= ty) js
+bool all_array_type(json_type ty, json_value const * js);
 
 #ifdef __cplusplus
    } /* extern "C" */

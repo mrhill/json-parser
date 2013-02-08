@@ -871,6 +871,103 @@ void json_value_free (json_value * value)
    json_value_free_ex (&settings, value);
 }
 
+char const * json_type_to_string(json_type ty) {
+   switch (ty) {
+      case json_none    : return "json_none";
+      case json_object  : return "json_object";
+      case json_array   : return "json_array";
+      case json_integer : return "json_integer";
+      case json_double  : return "json_double";
+      case json_string  : return "json_string";
+      case json_boolean : return "json_boolean";
+      case json_null    : return "json_null";
+      default           : return NULL;
+   }
+}
+
+// implies
+#define IMP(p,q) ((!(p)) || ((p) && (q)))
+#define XOR(x,y) (((x) && (!(y))) || ((!(x)) && (y)))
+
+static bool json_value_object_equal(json_value const * lhs, json_value const * rhs) {
+   unsigned int i;
+   if (lhs==rhs)     return true;  // given values are same object
+   if (XOR(lhs, rhs))   return false;
+   if (lhs->type!=json_object || rhs->type!=json_object)
+      return false; // type mismatch
+   if (lhs->u.object.length != rhs->u.object.length)
+      return false; // number of fields mismatch
+   for (i=0; i<lhs->u.object.length; ++i) {
+      // compare without ordering
+      json_value const * v = find_json_object(rhs, lhs->u.object.values[i].name);
+      if (!(v && json_value_equal(v, lhs->u.object.values[i].value)))
+         return false;
+   }
+   return true;
+}
+
+static bool json_value_array_equal(json_value const * lhs, json_value const * rhs) {
+   unsigned int i;
+   if (lhs==rhs)     return true;  // given values are same object
+   if (XOR(lhs, rhs))   return false;
+   if (lhs->type!=json_array || rhs->type!=json_array)
+      return false; // type mismatch
+   if (lhs->u.array.length != rhs->u.array.length)
+      return false; // number of fields mismatch
+   for (i=0; i<lhs->u.array.length; ++i) {
+      if (!json_value_equal(lhs->u.array.values[i], rhs->u.array.values[i]))
+         return false;
+   }
+   return true;
+}
+
+bool json_value_equal(json_value const * lhs, json_value const * rhs) {
+   if (lhs==rhs)     return true;
+   if (XOR(lhs, rhs))   return false;
+   return lhs->type==rhs->type
+      && IMP(lhs->type==json_none   , false)
+      && IMP(lhs->type==json_object , json_value_object_equal(lhs, rhs))
+      && IMP(lhs->type==json_array  , json_value_array_equal (lhs, rhs))
+      && IMP(lhs->type==json_integer, lhs->u.integer==rhs->u.integer)
+      && IMP(lhs->type==json_double , false) // can't declare valid comparison function
+      && IMP(lhs->type==json_string , lhs->u.string.length==rhs->u.string.length
+                           && !strcmp(lhs->u.string.ptr, rhs->u.string.ptr))
+      && IMP(lhs->type==json_boolean, lhs->u.boolean==rhs->u.boolean)
+      && IMP(lhs->type==json_null   , true);
+}
+
+static bool json_object_type_equal(json_value const * lhs, json_value const * rhs) {
+   unsigned int i;
+   if (lhs==rhs)     return true;  // given values are same object
+   if (XOR(lhs, rhs))   return false;
+   if (lhs->type!=json_object || rhs->type!=json_object)
+      return false; // type mismatch
+   if (lhs->u.object.length != rhs->u.object.length)
+      return false; // number of fields mismatch
+   for (i=0; i<lhs->u.object.length; ++i) {
+      // compare without ordering
+      json_value const * v = find_json_object(rhs, lhs->u.object.values[i].name);
+      if (!(v && json_type_equal(v, lhs->u.object.values[i].value)))
+         return false;
+   }
+   return true;
+}
+
+static bool json_array_type_equal(json_value const * lhs, json_value const * rhs) {
+   unsigned int i;
+   if (lhs==rhs)     return true;  // given values are same object
+   if (XOR(lhs, rhs))   return false;
+   if (lhs->type!=json_array || rhs->type!=json_array)
+      return false; // type mismatch
+   if (lhs->u.array.length != rhs->u.array.length)
+      return false; // number of fields mismatch
+   for (i=0; i<lhs->u.array.length; ++i) {
+      if (!json_type_equal(lhs->u.array.values[i], rhs->u.array.values[i]))
+         return false;
+   }
+   return true;
+}
+
 void json_value_dump(FILE * fp, json_value const * v) {
    void (* const rec)(FILE * fp, json_value const * v) = json_value_dump;
 
@@ -926,5 +1023,70 @@ void json_value_dump(FILE * fp, json_value const * v) {
          break;
       }
    }
+}
+
+bool all_array_type(json_type ty, json_value const * js) {
+	if (js && js->type==json_array) {
+		size_t i;
+		for (i=0; i<js->u.array.length; ++i) {
+			json_value const * x = js->u.array.values[i];
+			if (!(x && x->type==ty))
+				return false;
+		}
+		return true;
+	} else
+		return false;
+}
+
+static json_value * make_json_value_none(void) {
+   json_value * json_ = (json_value*)calloc(1, sizeof(json_value));
+   if (!json_)
+      return NULL;
+   *json_ = json_value_none;
+   return json_;
+}
+
+json_value * json_value_dup(json_value const * json) {
+   json_value * json_ = NULL;
+   if (!json)
+      return NULL;
+   json_ = make_json_value_none();
+   if (!json_)
+      return NULL;
+
+   // copy tag
+   json_->type = json->type;
+   // copy body
+        if (json->type == json_integer) { json_->u.integer = json->u.integer; }
+   else if (json->type == json_double ) { json_->u.dbl     = json->u.dbl;     }
+   else if (json->type == json_boolean) { json_->u.boolean = json->u.boolean; }
+   else if (json->type == json_null   ) { }
+   else if (json->type == json_string ) {
+      json_->u.string.length = json->u.string.length;
+      json_->u.string.ptr    = strdup(json->u.string.ptr);
+   } else if (json->type == json_object) {
+      size_t i;
+      json_->u.object.length = json->u.object.length;
+      json_->u.object.values = calloc(json->u.object.length
+                                     /* because inner type have no name, get size from the NULL */
+                                    , sizeof(*((json_value*)NULL)->u.object.values));
+      for (i=0; i<json_->u.object.length; ++i) {
+         json_->u.object.values[i].name  = strdup(json->u.object.values[i].name);
+         // recursive copy
+         json_->u.object.values[i].value = json_value_dup(json->u.object.values[i].value);
+      }
+   } else if (json->type == json_array) {
+      size_t i;
+      json_->u.array.length = json->u.array.length;
+      json_->u.array.values = calloc(json->u.array.length, sizeof(json_value));
+      for (i=0; i<json_->u.array.length; ++i)
+         // recursive copy
+         json_->u.array.values[i] = json_value_dup(json->u.array.values[i]);
+   } else if (json->type == json_none) {
+   } else {
+      free(json_);
+      return NULL;
+   }
+   return json_;
 }
 
