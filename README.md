@@ -4,8 +4,6 @@ Very low footprint JSON parser written in portable ANSI C.
 * Never recurses or allocates more memory than it needs
 * Very simple API with operator sugar for C++
 
-[![Build Status](https://secure.travis-ci.org/udp/json-parser.png)](http://travis-ci.org/udp/json-parser)
-
 Installing
 ----------
 
@@ -14,16 +12,11 @@ is _not_ required to build json-parser, and the source files (`json.c` and `json
 in any build system you already have in place.
 
 
-<<<<<<< HEAD
 API
 ---
-=======
-    json_value * json_value_dup
-        (json_value const *);
+    json_value * json_value_dup (json_value const *);
 
-	void json_value_dump
-		(FILE * fp, json_value const * v);
->>>>>>> d30283b... add copy constructor of json_value type
+    void json_value_dump (FILE * fp, json_value const * v);
 
     json_value * json_parse (const json_char * json,
                              size_t length);
