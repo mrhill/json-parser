@@ -1026,16 +1026,16 @@ void json_value_dump(FILE * fp, json_value const * v) {
 }
 
 bool all_array_type(json_type ty, json_value const * js) {
-	if (js && js->type==json_array) {
-		size_t i;
-		for (i=0; i<js->u.array.length; ++i) {
-			json_value const * x = js->u.array.values[i];
-			if (!(x && x->type==ty))
-				return false;
-		}
-		return true;
-	} else
-		return false;
+   if (js && js->type==json_array) {
+      size_t i;
+      for (i=0; i<js->u.array.length; ++i) {
+         json_value const * x = js->u.array.values[i];
+         if (!(x && x->type==ty))
+            return false;
+      }
+      return true;
+   } else
+      return false;
 }
 
 static json_value * make_json_value_none(void) {
