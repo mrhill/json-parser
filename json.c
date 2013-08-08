@@ -1065,20 +1065,22 @@ json_value * json_value_dup(json_value const * json) {
       json_->u.string.length = json->u.string.length;
       json_->u.string.ptr    = strdup(json->u.string.ptr);
    } else if (json->type == json_object) {
-      size_t i;
+      size_t i, index_size = json->u.object.length * sizeof(*((json_value*)NULL)->u.object.values);
+      for (i=0; i<json->u.object.length; ++i)
+         index_size += strlen(json->u.object.values[i].name) + 1;
       json_->u.object.length = json->u.object.length;
-      json_->u.object.values = calloc(json->u.object.length
-                                     /* because inner type have no name, get size from the NULL */
-                                    , sizeof(*((json_value*)NULL)->u.object.values));
-      for (i=0; i<json_->u.object.length; ++i) {
-         json_->u.object.values[i].name  = strdup(json->u.object.values[i].name);
-         // recursive copy
-         json_->u.object.values[i].value = json_value_dup(json->u.object.values[i].value);
+      json_->u.object.values = malloc(index_size);
+      index_size = json->u.object.length * sizeof(*((json_value*)NULL)->u.object.values);
+      for (i=0; i<json->u.object.length; ++i) {
+         json_->u.object.values[i].name = (char*)json_->u.object.values + index_size;
+         strcpy(json_->u.object.values[i].name, json->u.object.values[i].name);
+         index_size += strlen(json->u.object.values[i].name) + 1;
+         json_->u.object.values[i].value = json_value_dup(json->u.object.values[i].value); // recursive copy
       }
    } else if (json->type == json_array) {
       size_t i;
       json_->u.array.length = json->u.array.length;
-      json_->u.array.values = calloc(json->u.array.length, sizeof(json_value));
+      json_->u.array.values = calloc(json->u.array.length, sizeof(json_value *));
       for (i=0; i<json_->u.array.length; ++i)
          // recursive copy
          json_->u.array.values[i] = json_value_dup(json->u.array.values[i]);
