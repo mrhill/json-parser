@@ -104,7 +104,6 @@ static int new_value
    (json_state * state, json_value ** top, json_value ** root, json_value ** alloc, json_type type)
 {
    json_value * value;
-   int values_size;
 
    if (!state->first_pass)
    {
@@ -129,15 +128,15 @@ static int new_value
 
          case json_object:
 
-            values_size = sizeof (*value->u.object.values) * value->u.object.length;
-
             if (! ((*(void **) &value->u.object.values) = json_alloc
-                  (state, values_size + ((unsigned long) value->u.object.values), 0)) )
+                (state, sizeof (*value->u.object.values) * value->u.object.length, 0)) )
             {
                return 0;
             }
 
-            value->_reserved.object_mem = (*(char **) &value->u.object.values) + values_size;
+            value->_reserved.object_mem = json_alloc (state, value->u.object.names_size, 0);
+            if (!value->_reserved.object_mem)
+                return 0;
 
             value->u.object.length = 0;
             break;
@@ -364,7 +363,7 @@ json_value * json_parse_ex (json_settings * settings,
                   case json_object:
 
                      if (state.first_pass)
-                        (*(json_char **) &top->u.object.values) += string_length + 1;
+                        top->u.object.names_size += string_length + 1;
                      else
                      {
                         top->u.object.values [top->u.object.length].name
@@ -842,6 +841,12 @@ void json_value_free_ex (json_settings * settings, json_value * value)
 
             if (!value->u.object.length)
             {
+               unsigned i;
+               for(i=1; i<value->u.object.length; i++)
+                  if ((unsigned)(value->u.object.values[i].name - value->u.object.values[0].name) >= value->u.object.names_size)
+                     settings->mem_free (value->u.object.values[i].name, settings->user_data);
+
+               settings->mem_free (value->u.object.values[0].name, settings->user_data);
                settings->mem_free (value->u.object.values, settings->user_data);
                break;
             }
@@ -1080,7 +1085,7 @@ json_value * json_value_dup(json_value const * json) {
    } else if (json->type == json_array) {
       size_t i;
       json_->u.array.length = json->u.array.length;
-      json_->u.array.values = calloc(json->u.array.length, sizeof(json_value *));
+      json_->u.array.values = malloc(json->u.array.length * sizeof(json_value *));
       for (i=0; i<json_->u.array.length; ++i)
          // recursive copy
          json_->u.array.values[i] = json_value_dup(json->u.array.values[i]);
@@ -1090,5 +1095,42 @@ json_value * json_value_dup(json_value const * json) {
       return NULL;
    }
    return json_;
+}
+
+json_value * json_object_create(void)
+{
+    json_value *value = calloc(1, sizeof(json_value));
+    if (value)
+    {
+        value->type = json_object;
+    }
+    return value;
+}
+
+json_value * json_object_add(json_value * obj, const char * key, const json_value * val)
+{
+   json_value * value;
+   unsigned int new_length;
+   void* new_values;
+
+   if (!obj || obj->type != json_object)
+      return NULL;
+
+   new_length = obj->u.object.length + 1;
+   new_values = realloc(obj->u.object.values, new_length * sizeof(*((json_value*)NULL)->u.object.values));
+   if (!new_values)
+      return NULL;
+
+   obj->u.object.values = new_values;
+
+   if (!(obj->u.object.values[new_length-1].name = strdup(key)))
+      return NULL;
+
+   obj->u.object.length = new_length;
+
+   value = json_value_dup(val);
+   value->parent = obj;
+   obj->u.object.values[new_length-1].value = value;
+   return value;
 }
 

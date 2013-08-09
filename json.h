@@ -115,6 +115,7 @@ typedef struct _json_value
       struct
       {
          unsigned int length;
+         unsigned int names_size;
 
          struct
          {
@@ -265,8 +266,10 @@ void json_value_dump(FILE * fp, json_value const * v);
 /* Not usually necessary, unless you used a custom mem_alloc and now want to
  * use a custom mem_free.
  */
-void json_value_free_ex (json_settings * settings,
-                         json_value *);
+void json_value_free_ex (json_settings * settings, json_value *);
+
+json_value * json_object_create(void);
+json_value * json_object_add(json_value * obj, const char * key, const json_value * val);
 
 // compare json values
 bool json_value_equal(json_value const * lhs, json_value const * rhs);
